@@ -115,9 +115,11 @@ var RAW_URL = 'https://raw.githubusercontent.com/777hhh7/lalala/main/data/scores
 var ISSUE_URL = 'https://github.com/777hhh7/lalala/issues/new';
 
 function fetchLB() {
-  return fetch(RAW_URL + '?t=' + Date.now(), { signal: AbortSignal.timeout(5000) })
-    .then(function(r){ if(!r.ok) throw Error(); return r.json(); })
-    .catch(function(){ return null; });
+  var controller = new AbortController();
+  var timer = setTimeout(function(){ controller.abort(); }, 5000);
+  return fetch(RAW_URL + '?t=' + Date.now(), { signal: controller.signal })
+    .then(function(r){ clearTimeout(timer); if(!r.ok) throw Error(); return r.json(); })
+    .catch(function(){ clearTimeout(timer); return null; });
 }
 
 function esc(s) { return String(s).replace(/[&<>]/g, ''); }
@@ -280,8 +282,13 @@ function gameOver() {
   lastScore=Math.round(G.score);lastLevel=G.level;
   if(lastScore>G.hi){G.hi=lastScore;localStorage.setItem('pw_h',G.hi);}
   finalScoreEl.textContent=lastScore;highScoreEl.textContent=G.hi;
-  fetchLB().then(function(d){if(d&&d.length){var r=d.findIndex(function(x){return lastScore>=x.score});rankInfoEl.textContent=r>=0?'可进全球前 '+(r+1)+' 名！':'再接再厉！';}});
   gameOverScr.classList.add('active');
+  // 异步查询排名，不影响界面
+  try {
+    fetchLB().then(function(d){
+      if(d&&d.length){var r=d.findIndex(function(x){return lastScore>=x.score});rankInfoEl.textContent=r>=0?'可进全球前 '+(r+1)+' 名！':'再接再厉！';}
+    });
+  } catch(e) {}
 }
 
 function reset() {

@@ -4,7 +4,7 @@ on:
     types: [opened, labeled]
 jobs:
   process:
-    if: contains(github.event.issue.labels.*.name, 'score')
+    if: contains(github.event.issue.title, 'SCORE:')
     runs-on: ubuntu-latest
     permissions:
       contents: write
