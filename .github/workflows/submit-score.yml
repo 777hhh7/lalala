@@ -1,0 +1,44 @@
+name: 提交分数
+on:
+  issues:
+    types: [opened, labeled]
+jobs:
+  process:
+    if: contains(github.event.issue.labels.*.name, 'score')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: 解析
+        run: |
+          TITLE="${{ github.event.issue.title }}"
+          SCORE=$(echo "$TITLE" | grep -oP 'SCORE:\K\d+' || echo "0")
+          NAME=$(echo "${{ github.event.issue.body }}" | head -1 | tr -d '[:space:]' || echo "玩家")
+          LEVEL=$(echo "$TITLE" | grep -oP 'LEVEL:\K\d+' || echo "1")
+          echo "SCORE=$SCORE" >> $GITHUB_ENV
+          echo "NAME=$NAME" >> $GITHUB_ENV
+          echo "LEVEL=$LEVEL" >> $GITHUB_ENV
+      - name: 更新
+        run: |
+          mkdir -p data
+          cat data/scores.json 2>/dev/null || echo '[]' > data/scores.json
+          node -e "
+            const fs=require('fs');
+            let s=JSON.parse(fs.readFileSync('data/scores.json','utf8'));
+            s.push({name:process.env.NAME,score:+process.env.SCORE,level:+process.env.LEVEL,date:Date.now()});
+            s.sort((a,b)=>b.score-a.score);
+            if(s.length>200)s.length=200;
+            fs.writeFileSync('data/scores.json',JSON.stringify(s));
+          "
+      - name: 提交
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/scores.json
+          git diff --staged --quiet || (git commit -m "add score ${{ env.NAME }} ${{ env.SCORE }}" && git push)
+      - name: 关闭
+        run: gh issue close ${{ github.event.issue.number }} --comment "✅ 分数已收录！"
+        env:
+          GH_TOKEN: ${{ github.token }}
