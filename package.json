@@ -1,0 +1,12 @@
+{
+  "name": "plane-war",
+  "version": "1.0.0",
+  "description": "飞机大战 - 在线排行榜",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
